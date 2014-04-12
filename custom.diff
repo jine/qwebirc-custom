@@ -1,0 +1,73 @@
+diff -r 9194edb946c5 js/auth.js
+--- a/js/auth.js        Sun Jan 12 02:26:41 2014 +0000
++++ b/js/auth.js        Sat Apr 12 16:43:23 2014 +0200
+@@ -5,7 +5,7 @@
+ }
+
+ qwebirc.auth.enabled = function() {
+-  return false;
++  return true;
+ }
+
+ qwebirc.auth.quakeNetAuth = function() {
+@@ -13,9 +13,13 @@
+ }
+
+ qwebirc.auth.passAuth = function() {
+-  return true;
++  return false;
+ }
+
+ qwebirc.auth.bouncerAuth = function() {
+   return false;
+ }
++
++qwebirc.auth.serverAuth = function() {
++  return true;
++}
+diff -r 9194edb946c5 js/ui/panes/connect.js
+--- a/js/ui/panes/connect.js    Sun Jan 12 02:26:41 2014 +0000
++++ b/js/ui/panes/connect.js    Sat Apr 12 16:43:23 2014 +0200
+@@ -174,7 +174,7 @@
+       var passwordBox = qwebirc.util.createInput("password", passwordRow[1], "connect_auth_password");
+
+       authCheckBox.addEvent("click", function(e) { qwebirc.ui.authShowHide(authCheckBox, authRow, usernameBox, usernameRow, passwordRow[0]) });
+-    } else if(qwebirc.auth.bouncerAuth()) {
++    } else if(qwebirc.auth.bouncerAuth() || qwebirc.auth.serverAuth()) {
+       var passwordRow = createRow("Password:");
+       var passwordBox = qwebirc.util.createInput("password", passwordRow, "connect_auth_password");
+     }
+@@ -224,7 +224,7 @@
+           }
+
+           data["serverPassword"] = usernameBox.value + " " + passwordBox.value;
+-      } else if(qwebirc.auth.bouncerAuth()) {
++      } else if(qwebirc.auth.bouncerAuth() || qwebirc.auth.serverAuth()) {
+         if(!passwordBox.value) {
+           alert("You must supply a password.");
+           passwordBox.focus();
+diff -r 9194edb946c5 qwebirc/ircclient.py
+--- a/qwebirc/ircclient.py      Sun Jan 12 02:26:41 2014 +0000
++++ b/qwebirc/ircclient.py      Sat Apr 12 16:43:23 2014 +0200
+@@ -87,6 +87,8 @@
+       self.write("USER %s bleh bleh %s %s :%s" % (ident, ip, hmac, realname))
+     elif config.WEBIRC_MODE == "webirc":
+       self.write("WEBIRC %s qwebirc %s %s" % (config.WEBIRC_PASSWORD, hostname, ip))
++      if pass_ is not None:
++        self.write("PASS :%s" % pass_)
+       self.write("USER %s bleh %s :%s" % (ident, ip, realname))
+     elif config.WEBIRC_MODE == "cgiirc":
+       self.write("PASS %s_%s_%s" % (config.CGIIRC_STRING, ip, hostname))
+@@ -96,11 +98,8 @@
+         dispip = ip
+       else:
+         dispip = "%s/%s" % (hostname, ip)
+-
+       self.write("USER %s bleh bleh :%s - %s" % (ident, dispip, realname))
+
+-    if pass_ is not None:
+-      self.write("PASS :%s" % pass_)
+     self.write("NICK %s" % nick)
+
+     self.factory.client = self
+
